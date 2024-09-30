@@ -20,7 +20,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -71,86 +71,14 @@ int main() {
 
 	// End of setup
 
-	Shader shader1("./vertex_shader.glsl", "./normals.glsl");
+	Shader shader1("./vertex_shader.glsl", "./fragment_shader.glsl");
 	Shader lightSource("./light_vertex.glsl", "./lightSource.glsl");
 
 	Model monkey;
-
-	monkey.loadOBJ("./sphere.obj");
+	monkey.loadOBJ("./monkey.obj");
 
 	Model light;
 	light.loadOBJ("./monkey.obj");
-
-	float vertices[] = {
-		// Positions		  // Normals
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, 0.0f, -1.0f,
-
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
-
-		-0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
-		-0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
-		-0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
-		-0.5f, -0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
-
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  1.0f,  0.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  1.0f,  0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f,  0.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f,  0.0f, 0.0f,
-
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
-		-0.5f, -0.5f,  0.5f,  0.0f, -1.0f, 0.0f,
-		-0.5f, -0.5f, -0.5f,  0.0f, -1.0f, 0.0f,
-
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f, 0.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  0.0f,  1.0f, 0.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f,  1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  0.0f,  1.0f, 0.0f,
-	};
-	// world space positions of our cubes
-	glm::vec3 cubePositions[] = {
-		glm::vec3(0.0f,  0.0f,  0.0f),
-	};
-
-	unsigned int VBO, VAO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	
-	glBindVertexArray(VAO);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
-	glEnableVertexAttribArray(1);
-
-	unsigned int lightVAO;
-	glGenVertexArrays(1, &lightVAO);
-	glBindVertexArray(lightVAO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-	glEnableVertexAttribArray(0);
 
 	
 	unsigned int texture1;
@@ -182,6 +110,13 @@ int main() {
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+	int currentModel = 1;
+	bool modelCanChange = true;
+	float lastSwap = 0.0f;
+
+	bool loadSuccess = true;
+
+
 	while (!glfwWindowShouldClose(window)) {
 
 		float currentFrame = static_cast<float>(glfwGetTime());
@@ -193,6 +128,28 @@ int main() {
 		// Rendering
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+		// Model Swapping
+		float timeSinceSwap = currentFrame - lastSwap;
+
+		if ((int)timeSinceSwap % 5 == 0 && modelCanChange) {
+			modelCanChange = false;
+			if (currentModel % 2 == 0)
+				loadSuccess = monkey.loadOBJ("./sphere.obj");
+			else { 
+				loadSuccess = monkey.loadOBJ("./monkey.obj");
+			}
+			currentModel++;
+		}
+		if ((int)timeSinceSwap % 5 != 0) {
+			modelCanChange = true;
+		}
+
+		// Load error model if load failed
+		if (!loadSuccess) {
+			loadSuccess = monkey.loadOBJ("./error.obj");
+		}
 
 		glBindTexture(GL_TEXTURE_2D, texture1);
 
@@ -230,9 +187,6 @@ int main() {
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
-
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
 
 	glfwTerminate();
 	return 0;

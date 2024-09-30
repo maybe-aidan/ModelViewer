@@ -12,6 +12,12 @@ Model::~Model() {
 }
 
 bool Model::loadOBJ(const std::string& path) {
+	vertices.clear();
+	normals.clear();
+	texCoords.clear();
+	GL_normals.clear();
+	vertexIndices.clear();
+
 	std::ifstream file(path);
 	if (!file.is_open()) {
 		std::cerr << "ERROR::MODEL::FILE_NOT_SUCCESFULLY_READ" << std::endl;
@@ -19,6 +25,8 @@ bool Model::loadOBJ(const std::string& path) {
 	}
 
 	std::string line;
+	// Parsing vertex, texture(uv), normal, and face data
+	// As of right now, textures are not used, but I still parse them for future use.
 	while (std::getline(file, line)) {
 		if (line.substr(0, 2) == "v ") {
 			parseVertex(line);
@@ -38,6 +46,10 @@ bool Model::loadOBJ(const std::string& path) {
 
 	setupBuffers();
 
+	std::cout << "Vertex Buffer Size: " << vertices.size() << std::endl;
+	std::cout << "Normal Buffer Size: " << normals.size() << std::endl;
+	std::cout << "GL_Normal Buffer Size: " << GL_normals.size() << std::endl;
+
 	return true;
 }
 
@@ -48,7 +60,7 @@ void Model::render(Shader shader) {
 
 	shader.use();
 
-	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, vertexIndices.size(), GL_UNSIGNED_INT, 0);
 
 	glBindVertexArray(0);
 }
@@ -65,6 +77,11 @@ void Model::setupBuffers() {
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 	glEnableVertexAttribArray(0);
 
+	// Loading relevant data into the correct position per vertex.
+ 
+	
+	// Texture coordinates are probably broken right now, but I haven't test them yet so I can't say for sure.
+	// Probably needs the same treament as the normals.
 	if (!texCoords.empty()) {
 		GLuint texVbo;
 		glGenBuffers(1, &texVbo);
@@ -74,41 +91,58 @@ void Model::setupBuffers() {
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		glEnableVertexAttribArray(1);
 	}
-	if (!normals.empty()) {
+	if (!GL_normals.empty()) {
 		GLuint normalVbo;
 		glGenBuffers(1, &normalVbo);
 		glBindBuffer(GL_ARRAY_BUFFER, normalVbo);
-		glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), normals.data(), GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, GL_normals.size() * sizeof(glm::vec3), GL_normals.data(), GL_STATIC_DRAW);
 
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		glEnableVertexAttribArray(2);
 	}
 
+	// Load the index buffer into the EBO.
 	glGenBuffers(1, &ebo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, vertexIndices.size() * sizeof(unsigned int), vertexIndices.data(), GL_STATIC_DRAW);
 
 	glBindVertexArray(0);
 }
 
+// OBJ File Vertex format:
+// v xCoord yCoord zCoord 
+// Vertices can have optional extra paramters, but for now I only use x, y, z
 void Model::parseVertex(const std::string& line) {
 	std::istringstream s(line.substr(2));
 	glm::vec3 vertex;
 	s >> vertex.x >> vertex.y >> vertex.z;
 	vertices.push_back(vertex);
 }
+
+// OBJ File Texture format:
+// vt uCoord vCoord
+// Similar to Vertices, texture coordinates can have extra parameters.
 void Model::parseTexCoord(const std::string& line) {
 	std::istringstream s(line.substr(3));
 	glm::vec2 texCoord;
 	s >> texCoord.x >> texCoord.y;
 	texCoords.push_back(texCoord);
 }
+
+// OBJ File Normal format:
+// vn normalX normalY normalZ
+// Normals represent vectors orthogonal (perpendicular) to a surface point, usually a vertex.
 void Model::parseNormal(const std::string& line) {
 	std::istringstream s(line.substr(3));
 	glm::vec3 normal;
 	s >> normal.x >> normal.y >> normal.z;
 	normals.push_back(normal);
 }
+
+// OBJ File Face format:
+// f vertexIndex1/textureIndex1/normalIndex1 ... vertexIndexN/textureIndexN/normalIndexN
+// faces can omit texture parameter, leaving the following format:
+// f vertexIndex1//normalIndex1 ...
 void Model::parseFace(const std::string& line) {
 	std::stringstream s(line.substr(2));
 	std::vector<unsigned int> vIndices;
@@ -116,42 +150,65 @@ void Model::parseFace(const std::string& line) {
 	std::vector<unsigned int> nIndices;
 	std::string vertexData;
 
+	// Get each vertex of a face.
 	while (s >> vertexData) {
 		std::istringstream vertexStream(vertexData);
 		unsigned int vIndex, tIndex, nIndex;
 		char slash;
 		
-		vertexStream >> vIndex >> slash >> tIndex >> slash >> nIndex;
+		vertexStream >> vIndex >> slash;
+		if (vertexStream.peek() == '/') {
+			vertexStream >> slash >> nIndex;
+			tIndex = 0;
+		}
+		else {
+			vertexStream >> tIndex >> slash >> nIndex;
+		}
+		
 		vIndices.push_back(vIndex - 1);
-		tIndices.push_back(tIndex - 1); // Store texture index
+		if(tIndex != 0) tIndices.push_back(tIndex - 1); // Store texture index
 		nIndices.push_back(nIndex - 1); // Store normal index
+
+		// If the current vertex index does not match the normal index
+		if (vIndex != nIndex) {
+			// Resize the GL_normals buffer accordingly.
+			if (GL_normals.size() < vIndex) {
+				GL_normals.resize(vIndex);
+			}
+			// Set the normal vector at the vertex index to be the correct normal
+			GL_normals.at(vIndex - 1) =  normals.at(nIndex-1);
+		}
+		// This method works.. somewhat
+		// Unfortunately some faces in obj file use multiple normals for the same vetex on different faces.
+		// So this method almost certainly overwrites normals on some faces, causing strange patches of incorrect lighting.
+		// Overall though, this method works MUCH better than the previous method of not rearranging normal buffer, essentially getting random surface normals.
 	}
 
 	size_t count = vIndices.size();
+	// Split the face into OpenGL readable triangles.
 	if (count == 3) {
 		// Triangle: directly add the indices
-		indices.push_back(vIndices[0]);
-		indices.push_back(vIndices[1]);
-		indices.push_back(vIndices[2]);
-
+		vertexIndices.push_back(vIndices[0]);
+		vertexIndices.push_back(vIndices[1]);
+		vertexIndices.push_back(vIndices[2]);
 	}
 	else if (count == 4) {
 		// Quad: split into two triangles
-		indices.push_back(vIndices[0]); // First vertex
-		indices.push_back(vIndices[1]); // Second vertex
-		indices.push_back(vIndices[2]); // Third vertex
+		vertexIndices.push_back(vIndices[0]);
+		vertexIndices.push_back(vIndices[1]);
+		vertexIndices.push_back(vIndices[2]);
 
 
-		indices.push_back(vIndices[0]); // First vertex
-		indices.push_back(vIndices[2]); // Third vertex
-		indices.push_back(vIndices[3]); // Fourth vertex
+		vertexIndices.push_back(vIndices[0]);
+		vertexIndices.push_back(vIndices[2]);
+		vertexIndices.push_back(vIndices[3]);
 	}
 	else if (count > 4) {
 		// Polygon: triangulate using fan triangulation
 		for (size_t i = 1; i < count - 1; i++) {
-			indices.push_back(vIndices[0]);     // First vertex (fixed for fan triangulation)
-			indices.push_back(vIndices[i]);     // Current vertex
-			indices.push_back(vIndices[i + 1]); // Next vertex
+			vertexIndices.push_back(vIndices[0]);
+			vertexIndices.push_back(vIndices[i]);
+			vertexIndices.push_back(vIndices[i+1]);
 		}
 	}
 }
