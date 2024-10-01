@@ -46,9 +46,11 @@ bool Model::loadOBJ(const std::string& path) {
 
 	setupBuffers();
 
+	/* Debug *\
 	std::cout << "Vertex Buffer Size: " << vertices.size() << std::endl;
 	std::cout << "Normal Buffer Size: " << normals.size() << std::endl;
 	std::cout << "GL_Normal Buffer Size: " << GL_normals.size() << std::endl;
+	*/
 
 	return true;
 }

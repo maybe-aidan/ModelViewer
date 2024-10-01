@@ -19,6 +19,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
 float lastX = WIDTH / 2.0f;
@@ -28,6 +29,11 @@ bool firstMouse = true;
 // timing
 float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
+
+unsigned int currentModel = 0;
+unsigned int currentShader = 0;
+bool canSwitchModel = true;
+bool canSwitchShader = true;
 
 int main() {
 
@@ -53,6 +59,7 @@ int main() {
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 	glfwSetCursorPosCallback(window, mouse_callback);
 	glfwSetScrollCallback(window, scroll_callback);
+	glfwSetKeyCallback(window, key_callback);
 
 	// tell GLFW to capture our mouse
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
@@ -72,6 +79,7 @@ int main() {
 	// End of setup
 
 	Shader shader1("./vertex_shader.glsl", "./fragment_shader.glsl");
+	Shader normals("./vertex_shader.glsl", "./normals.glsl");
 	Shader lightSource("./light_vertex.glsl", "./lightSource.glsl");
 
 	Model monkey;
@@ -81,6 +89,7 @@ int main() {
 	light.loadOBJ("./monkey.obj");
 
 	
+	/* Textures are unused right now.
 	unsigned int texture1;
 	// texture 1
 	// ---------
@@ -106,17 +115,20 @@ int main() {
 		std::cout << "Failed to load texture" << std::endl;
 	}
 	stbi_image_free(data);
+	*/
 	
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-	int currentModel = 1;
 	bool modelCanChange = true;
 	float lastSwap = 0.0f;
 
 	bool loadSuccess = true;
 
+	Shader* shader = &shader1;
 
+	// Model Viewer Main Loop
+	// Cycle through preset models with  [SPACE]
+	// Cycle through preset shaders with [LSHIFT]
 	while (!glfwWindowShouldClose(window)) {
 
 		float currentFrame = static_cast<float>(glfwGetTime());
@@ -131,19 +143,47 @@ int main() {
 
 
 		// Model Swapping
-		float timeSinceSwap = currentFrame - lastSwap;
-
-		if ((int)timeSinceSwap % 5 == 0 && modelCanChange) {
-			modelCanChange = false;
-			if (currentModel % 2 == 0)
-				loadSuccess = monkey.loadOBJ("./sphere.obj");
-			else { 
+		if (!canSwitchModel) {
+			switch (currentModel % 5) {
+			case 0:
 				loadSuccess = monkey.loadOBJ("./monkey.obj");
+				canSwitchModel = true;
+				break;
+			case 1:
+				loadSuccess = monkey.loadOBJ("./sphere.obj");
+				canSwitchModel = true;
+				break;
+			case 2:
+				loadSuccess = monkey.loadOBJ("./cube.obj");
+				canSwitchModel = true;
+				break;
+			case 3:
+				loadSuccess = monkey.loadOBJ("./multiple.obj");
+				canSwitchModel = true;
+				break;
+			default:
+				loadSuccess = monkey.loadOBJ("./error.obj");
+				canSwitchModel = true;
+				break;
 			}
-			currentModel++;
 		}
-		if ((int)timeSinceSwap % 5 != 0) {
-			modelCanChange = true;
+
+		// Shader swapping
+		if (!canSwitchShader) {
+			switch (currentShader % 3) {
+			case 0:
+				shader = &shader1;
+				canSwitchShader = true;
+				break;
+			case 1:
+				shader = &normals;
+				canSwitchShader = true;
+				break;
+			default:
+				shader = &lightSource;
+				canSwitchShader = true;
+				break;
+			}
 		}
 
 		// Load error model if load failed
@@ -151,27 +191,27 @@ int main() {
 			loadSuccess = monkey.loadOBJ("./error.obj");
 		}
 
-		glBindTexture(GL_TEXTURE_2D, texture1);
+		// glBindTexture(GL_TEXTURE_2D, texture1);
 
 		glm::vec3 lightPosition = glm::vec3(5.0f * glm::sin(currentFrame), 2.0f* glm::cos(currentFrame), 3.0f);
 
-		shader1.use();
-		shader1.setVec3("lightPos", lightPosition);
-		shader1.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-		shader1.setVec3("viewPos", camera.Position);
+		shader->use();
+		shader->setVec3("lightPos", lightPosition);
+		shader->setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+		shader->setVec3("viewPos", camera.Position);
 
 		// pass projection matrix to shader (note that in this case it could change every frame)
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
-		shader1.setMat4("projection", projection);
+		shader->setMat4("projection", projection);
 		
 
 		// camera/view transformation
 		glm::mat4 view = camera.GetViewMatrix();
-		shader1.setMat4("view", view);
+		shader->setMat4("view", view);
 
 		glm::mat4 model = glm::mat4(1.0f);
-		shader1.setMat4("model", model);
-		monkey.render(shader1);
+		shader->setMat4("model", model);
+		monkey.render(*shader);
 
 		lightSource.use();
 		lightSource.setMat4("projection", projection);
@@ -208,6 +248,27 @@ void processInput(GLFWwindow* window)
 		camera.ProcessKeyboard(LEFT, deltaTime);
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		camera.ProcessKeyboard(RIGHT, deltaTime);
+}
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
+	{
+		if (canSwitchModel) {
+			std::cout << "Switching Model!" << std::endl;
+			currentModel++;
+			canSwitchModel = false;
+		}
+	}
+
+	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS) 
+	{
+		if (canSwitchShader) {
+			std::cout << "Switching Shader!" << std::endl;
+			currentShader++;
+			canSwitchShader = false;
+		}
+	}
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
