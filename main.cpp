@@ -126,6 +126,8 @@ int main() {
 
 	Shader* shader = &shader1;
 
+	glm::vec3 modelScale(1, 1, 1);
+
 	// Model Viewer Main Loop
 	// Cycle through preset models with  [SPACE]
 	// Cycle through preset shaders with [LSHIFT]
@@ -144,26 +146,52 @@ int main() {
 
 		// Model Swapping
 		if (!canSwitchModel) {
-			switch (currentModel % 5) {
+			switch (currentModel % 9) {
 			case 0:
 				loadSuccess = monkey.loadOBJ("./monkey.obj");
 				canSwitchModel = true;
+				modelScale = glm::vec3(1.0f);
 				break;
 			case 1:
 				loadSuccess = monkey.loadOBJ("./sphere.obj");
 				canSwitchModel = true;
+				modelScale = glm::vec3(1.0f);
 				break;
 			case 2:
 				loadSuccess = monkey.loadOBJ("./cube.obj");
 				canSwitchModel = true;
+				modelScale = glm::vec3(1.0f);
 				break;
 			case 3:
 				loadSuccess = monkey.loadOBJ("./multiple.obj");
+				canSwitchModel = true;
+				modelScale = glm::vec3(1.0f);
+				break;
+			case 4: // The bunny, cow and dragon don't come with prepackaged normals, so are fairly boring to look at. May have to start calculating my own normals.
+				// Bunny is tiny
+				loadSuccess = monkey.loadOBJ("./stanford-bunny.obj");
+				modelScale = glm::vec3(10.0f);
+				canSwitchModel = true;
+				break;
+			case 5:
+				loadSuccess = monkey.loadOBJ("./cow.obj");
+				modelScale = glm::vec3(0.3f);
+				canSwitchModel = true;
+				break;
+			case 6:
+				loadSuccess = monkey.loadOBJ("./beetle.obj");
+				canSwitchModel = true;
+				modelScale = glm::vec3(2.0f);
+				break;
+			case 7:
+				loadSuccess = monkey.loadOBJ("./xyzrgb_dragon.obj");
+				modelScale = glm::vec3(0.01f);
 				canSwitchModel = true;
 				break;
 			default:
 				loadSuccess = monkey.loadOBJ("./error.obj");
 				canSwitchModel = true;
+				modelScale = glm::vec3(1.0f);
 				break;
 			}
 		}
@@ -209,7 +237,7 @@ int main() {
 		glm::mat4 view = camera.GetViewMatrix();
 		shader->setMat4("view", view);
 
-		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 model = glm::scale(glm::mat4(1.0f), modelScale);
 		shader->setMat4("model", model);
 		monkey.render(*shader);
 
@@ -255,7 +283,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_SPACE && action == GLFW_PRESS)
 	{
 		if (canSwitchModel) {
-			std::cout << "Switching Model!" << std::endl;
+			// std::cout << "Switching Model!" << std::endl;
 			currentModel++;
 			canSwitchModel = false;
 		}
@@ -264,7 +292,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 	if (key == GLFW_KEY_LEFT_SHIFT && action == GLFW_PRESS) 
 	{
 		if (canSwitchShader) {
-			std::cout << "Switching Shader!" << std::endl;
+			// std::cout << "Switching Shader!" << std::endl;
 			currentShader++;
 			canSwitchShader = false;
 		}

@@ -158,32 +158,43 @@ void Model::parseFace(const std::string& line) {
 		unsigned int vIndex, tIndex, nIndex;
 		char slash;
 		
-		vertexStream >> vIndex >> slash;
+		vertexStream >> vIndex; 
 		if (vertexStream.peek() == '/') {
-			vertexStream >> slash >> nIndex;
-			tIndex = 0;
+			vertexStream >> slash;
+			if (vertexStream.peek() == '/') {
+				vertexStream >> slash >> nIndex;
+				tIndex = 0;
+			}
+			else {
+				vertexStream >> tIndex >> slash >> nIndex;
+			}
 		}
 		else {
-			vertexStream >> tIndex >> slash >> nIndex;
+			tIndex = 0;
+			nIndex = 0;
 		}
 		
 		vIndices.push_back(vIndex - 1);
 		if(tIndex != 0) tIndices.push_back(tIndex - 1); // Store texture index
-		nIndices.push_back(nIndex - 1); // Store normal index
+		/* Not a fan of how this has been working, decided to calculate my own normals.
+		if (nIndex != 0) {
+			nIndices.push_back(nIndex - 1); // Store normal index
 
-		// If the current vertex index does not match the normal index
-		if (vIndex != nIndex) {
-			// Resize the GL_normals buffer accordingly.
-			if (GL_normals.size() < vIndex) {
-				GL_normals.resize(vIndex);
+			// If the current vertex index does not match the normal index
+			if (vIndex != nIndex) {
+				// Resize the GL_normals buffer accordingly.
+				if (GL_normals.size() < vIndex) {
+					GL_normals.resize(vIndex);
+				}
+				// Set the normal vector at the vertex index to be the correct normal
+				GL_normals.at(vIndex - 1) =  normals.at(nIndex-1);
 			}
-			// Set the normal vector at the vertex index to be the correct normal
-			GL_normals.at(vIndex - 1) =  normals.at(nIndex-1);
+			// This method works.. somewhat
+			// Unfortunately some faces in obj file use multiple normals for the same vetex on different faces.
+			// So this method almost certainly overwrites normals on some faces, causing strange patches of incorrect lighting.
+			// Overall though, this method works MUCH better than the previous method of not rearranging normal buffer, essentially getting random surface normals.
 		}
-		// This method works.. somewhat
-		// Unfortunately some faces in obj file use multiple normals for the same vetex on different faces.
-		// So this method almost certainly overwrites normals on some faces, causing strange patches of incorrect lighting.
-		// Overall though, this method works MUCH better than the previous method of not rearranging normal buffer, essentially getting random surface normals.
+		*/
 	}
 
 	size_t count = vIndices.size();
@@ -193,17 +204,20 @@ void Model::parseFace(const std::string& line) {
 		vertexIndices.push_back(vIndices[0]);
 		vertexIndices.push_back(vIndices[1]);
 		vertexIndices.push_back(vIndices[2]);
+		generateNormals(0, 1, 2, vIndices);
 	}
 	else if (count == 4) {
 		// Quad: split into two triangles
 		vertexIndices.push_back(vIndices[0]);
 		vertexIndices.push_back(vIndices[1]);
 		vertexIndices.push_back(vIndices[2]);
+		generateNormals(0, 1, 2, vIndices);
 
 
 		vertexIndices.push_back(vIndices[0]);
 		vertexIndices.push_back(vIndices[2]);
 		vertexIndices.push_back(vIndices[3]);
+		generateNormals(0, 2, 3, vIndices);
 	}
 	else if (count > 4) {
 		// Polygon: triangulate using fan triangulation
@@ -211,6 +225,27 @@ void Model::parseFace(const std::string& line) {
 			vertexIndices.push_back(vIndices[0]);
 			vertexIndices.push_back(vIndices[i]);
 			vertexIndices.push_back(vIndices[i+1]);
+			generateNormals(0, i, i+1, vIndices);
 		}
 	}
+}
+
+// Takes more time for intial model load, but is considerably more reliable than the loading of normals from the file 
+void Model::generateNormals(unsigned int aIndex, unsigned int bIndex, unsigned int cIndex, std::vector<unsigned int>& vIndices) {
+	// Calculating for the normal at vertex A, we need to take the vectors of A to B and A to C. Thus, n_A = normalize(cross(B - A, C - A));
+	unsigned int a = vIndices[aIndex];
+	unsigned int b = vIndices[bIndex];
+	unsigned int c = vIndices[cIndex];
+
+	glm::vec3 nA = glm::normalize(glm::cross(vertices[b] - vertices[a], vertices[c] - vertices[a]));
+	glm::vec3 nB = glm::normalize(glm::cross(vertices[c] - vertices[b], vertices[a] - vertices[b]));
+	glm::vec3 nC = glm::normalize(glm::cross(vertices[a] - vertices[c], vertices[b] - vertices[c]));
+
+	unsigned int maxIndex = std::max({ a, b, c });
+	if (GL_normals.size() <= maxIndex) {
+		GL_normals.resize(maxIndex + 1); // Ensure GL_normals can hold the largest index
+	}
+	GL_normals[a] = nA;
+	GL_normals[b] = nB;
+	GL_normals[c] = nC;
 }

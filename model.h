@@ -52,6 +52,8 @@ private:
 	void parseFace(const std::string& line);
 
 	void setupBuffers();
+
+	void generateNormals(unsigned int a, unsigned int b, unsigned int c, std::vector<unsigned int>& vIndices);
 };
 
 #endif
