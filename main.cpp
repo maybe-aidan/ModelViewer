@@ -82,8 +82,8 @@ int main() {
 	Shader normals("./vertex_shader.glsl", "./normals.glsl");
 	Shader lightSource("./light_vertex.glsl", "./lightSource.glsl");
 
-	Model monkey;
-	monkey.loadOBJ("./monkey.obj");
+	Model subject;
+	subject.loadOBJ("./monkey.obj");
 
 	Model light;
 	light.loadOBJ("./monkey.obj");
@@ -118,13 +118,19 @@ int main() {
 	*/
 	
 
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);  // Uncomment for Wireframe Mode!
 	bool modelCanChange = true;
 	float lastSwap = 0.0f;
 
 	bool loadSuccess = true;
 
 	Shader* shader = &shader1;
+
+	shader->use();
+	shader->setVec3("material.ambient", glm::vec3(0.329412f, 0.223529f, 0.027451f));
+	shader->setVec3("material.diffuse", glm::vec3(0.780392f, 0.568627f, 0.113725f));
+	shader->setVec3("material.specular", glm::vec3(0.992157f, 0.941176f, 0.807843f));
+	shader->setFloat("material.shininess", 27.897f);
 
 	glm::vec3 modelScale(1, 1, 1);
 
@@ -143,53 +149,101 @@ int main() {
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
 		// Model Swapping
 		if (!canSwitchModel) {
 			switch (currentModel % 9) {
 			case 0:
-				loadSuccess = monkey.loadOBJ("./monkey.obj");
+				loadSuccess = subject.loadOBJ("./monkey.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(0.329412f, 0.223529f, 0.027451f));
+				shader->setVec3("material.diffuse", glm::vec3(0.780392f, 0.568627f, 0.113725f));
+				shader->setVec3("material.specular", glm::vec3(0.992157f, 0.941176f, 0.807843f));
+				shader->setFloat("material.shininess", 27.897f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(1.0f);
 				break;
 			case 1:
-				loadSuccess = monkey.loadOBJ("./sphere.obj");
+				// Normal averaging process seems to have made the "patching" effect less noticable on the sphere.
+				loadSuccess = subject.loadOBJ("./sphere.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(1.0f);
 				break;
 			case 2:
-				loadSuccess = monkey.loadOBJ("./cube.obj");
+				// Normal Averaging seems to have fixed the polar lighting on the cube. Still not too happy with the interpolation of normals for these low-poly models.
+				loadSuccess = subject.loadOBJ("./cube.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(1.0f);
 				break;
 			case 3:
-				loadSuccess = monkey.loadOBJ("./multiple.obj");
+				loadSuccess = subject.loadOBJ("./multiple.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(1.0f);
 				break;
 			case 4: // The bunny, cow and dragon don't come with prepackaged normals, so are fairly boring to look at. May have to start calculating my own normals.
 				// Bunny is tiny
-				loadSuccess = monkey.loadOBJ("./stanford-bunny.obj");
+				loadSuccess = subject.loadOBJ("./stanford-bunny.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(0.25f, 0.20725f, 0.20725f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.829f, 0.829f));
+				shader->setVec3("material.specular", glm::vec3(0.296648f, 0.296648f, 0.296648f));
+				shader->setFloat("material.shininess", 11.264f);
 				modelScale = glm::vec3(10.0f);
 				canSwitchModel = true;
 				break;
 			case 5:
-				loadSuccess = monkey.loadOBJ("./cow.obj");
+				loadSuccess = subject.loadOBJ("./cow.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
 				modelScale = glm::vec3(0.3f);
 				canSwitchModel = true;
 				break;
 			case 6:
-				loadSuccess = monkey.loadOBJ("./beetle.obj");
+				// Dragon and beetle seem to be most affected by the strange rippling due to the normal averaging.
+				loadSuccess = subject.loadOBJ("./beetle.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(2.0f);
 				break;
 			case 7:
-				loadSuccess = monkey.loadOBJ("./xyzrgb_dragon.obj");
+				loadSuccess = subject.loadOBJ("./xyzrgb_dragon.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(0.135f, 0.2225f, 0.1575f));
+				shader->setVec3("material.diffuse", glm::vec3(0.54f, 0.89f, 0.63f));
+				shader->setVec3("material.ambient", glm::vec3(0.316228f, 0.316228f, 0.316228f));
+				shader->setFloat("material.shininess", 12.8f);
 				modelScale = glm::vec3(0.01f);
 				canSwitchModel = true;
 				break;
 			default:
-				loadSuccess = monkey.loadOBJ("./error.obj");
+				// Shoutout to Valve :)
+				loadSuccess = subject.loadOBJ("./error.obj");
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.0f, 0.0f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.0f, 0.0f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(1.0f);
 				break;
@@ -216,7 +270,7 @@ int main() {
 
 		// Load error model if load failed
 		if (!loadSuccess) {
-			loadSuccess = monkey.loadOBJ("./error.obj");
+			loadSuccess = subject.loadOBJ("./error.obj");
 		}
 
 		// glBindTexture(GL_TEXTURE_2D, texture1);
@@ -224,8 +278,11 @@ int main() {
 		glm::vec3 lightPosition = glm::vec3(5.0f * glm::sin(currentFrame), 2.0f* glm::cos(currentFrame), 3.0f);
 
 		shader->use();
-		shader->setVec3("lightPos", lightPosition);
-		shader->setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+
+		shader->setVec3("light.position", lightPosition);
+		shader->setVec3("light.diffuse", glm::vec3(0.7f));
+		shader->setVec3("light.ambient", glm::vec3(0.2f));
+		shader->setVec3("light.specular", glm::vec3(1.0f));
 		shader->setVec3("viewPos", camera.Position);
 
 		// pass projection matrix to shader (note that in this case it could change every frame)
@@ -238,8 +295,9 @@ int main() {
 		shader->setMat4("view", view);
 
 		glm::mat4 model = glm::scale(glm::mat4(1.0f), modelScale);
+		model = glm::rotate(model, currentFrame, glm::vec3(0.f, 1.f, 0.f));
 		shader->setMat4("model", model);
-		monkey.render(*shader);
+		subject.render(*shader);
 
 		lightSource.use();
 		lightSource.setMat4("projection", projection);

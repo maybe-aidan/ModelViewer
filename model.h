@@ -10,17 +10,6 @@
 
 #include "shader.h"
 
-struct Vertex {
-	glm::vec3 position;
-	glm::vec3 normal;
-	glm::vec2 uvCoord;
-
-	bool operator==(const Vertex& other) {
-		return position == other.position && normal == other.normal && uvCoord == other.uvCoord;
-	}
-
-};
-
 class Model
 {
 public:
@@ -30,7 +19,7 @@ public:
 	bool loadOBJ(const std::string& path);
 
 	std::vector<glm::vec3> getVertices() const { return vertices; }
-	std::vector<glm::vec3> getNormals() const { return normals; }
+	// std::vector<glm::vec3> getNormals() const { return normals; }
 	std::vector<glm::vec2> getTexCoords() const { return texCoords; }
 
 	void render(Shader shader);
@@ -38,7 +27,8 @@ public:
 private:
 	std::vector<glm::vec3> vertices;
 	std::vector<glm::vec3> GL_normals;
-	std::vector<glm::vec3> normals;
+	std::vector<unsigned int> normal_count;
+	// std::vector<glm::vec3> normals;
 	std::vector<glm::vec2> texCoords;
 	std::vector<unsigned int> vertexIndices; // Faces
 

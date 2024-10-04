@@ -13,7 +13,7 @@ Model::~Model() {
 
 bool Model::loadOBJ(const std::string& path) {
 	vertices.clear();
-	normals.clear();
+	// normals.clear();
 	texCoords.clear();
 	GL_normals.clear();
 	vertexIndices.clear();
@@ -34,9 +34,10 @@ bool Model::loadOBJ(const std::string& path) {
 		else if (line.substr(0, 3) == "vt ") {
 			parseTexCoord(line);
 		}
+		/*
 		else if (line.substr(0, 3) == "vn ") {
 			parseNormal(line);
-		}
+		}*/ // Unused for now, normals are directly calculated from vertices.
 		else if (line.substr(0, 2) == "f ") {
 			parseFace(line);
 		}
@@ -134,12 +135,15 @@ void Model::parseTexCoord(const std::string& line) {
 // OBJ File Normal format:
 // vn normalX normalY normalZ
 // Normals represent vectors orthogonal (perpendicular) to a surface point, usually a vertex.
+
+/* As of right now, normals are directly calculated, so this is unused.
 void Model::parseNormal(const std::string& line) {
 	std::istringstream s(line.substr(3));
 	glm::vec3 normal;
 	s >> normal.x >> normal.y >> normal.z;
 	normals.push_back(normal);
 }
+*/
 
 // OBJ File Face format:
 // f vertexIndex1/textureIndex1/normalIndex1 ... vertexIndexN/textureIndexN/normalIndexN
@@ -244,8 +248,35 @@ void Model::generateNormals(unsigned int aIndex, unsigned int bIndex, unsigned i
 	unsigned int maxIndex = std::max({ a, b, c });
 	if (GL_normals.size() <= maxIndex) {
 		GL_normals.resize(maxIndex + 1); // Ensure GL_normals can hold the largest index
+		normal_count.resize(maxIndex + 1);
 	}
-	GL_normals[a] = nA;
-	GL_normals[b] = nB;
-	GL_normals[c] = nC;
+
+	// Averaging Normal vectors if a single index has more than one normal associated with it.
+	// This fixes a lot of the problems, most notably with cubes; however, it seems to be causing some rippling effects on more high definition models?
+	// I can't tell yet if I'm satisfied with this method, but I do believe it is an improvement.
+	if (normal_count[a] == 0)
+	{
+		GL_normals[a] = nA;
+		normal_count[a]++;
+	}
+	else
+	{
+		GL_normals[a] = (GL_normals[a] + nA) / static_cast<float>(normal_count[a]);
+	}
+	if (normal_count[b] == 0)
+	{
+		GL_normals[b] = nB;
+	}
+	else
+	{
+		GL_normals[b] = (GL_normals[b] + nB) / static_cast<float>(normal_count[b]);
+	}
+	if (normal_count[c] == 0)
+	{
+		GL_normals[c] = nC;
+	}
+	else
+	{
+		GL_normals[c] = (GL_normals[c] + nC) / static_cast<float>(normal_count[c]);
+	}
 }
