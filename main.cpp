@@ -34,6 +34,7 @@ unsigned int currentModel = 0;
 unsigned int currentShader = 0;
 bool canSwitchModel = true;
 bool canSwitchShader = true;
+bool toggleWireframe = true;
 
 int main() {
 
@@ -135,8 +136,11 @@ int main() {
 	glm::vec3 modelScale(1, 1, 1);
 
 	// Model Viewer Main Loop
+	// Move with						 [ W A S D]
+	// Look with						 [ MOUSE ]
 	// Cycle through preset models with  [SPACE]
-	// Cycle through preset shaders with [LSHIFT]
+	// Cycle through preset shaders with [L SHIFT]
+	// Toggle Wireframe Mode with		 [L ALT]
 	while (!glfwWindowShouldClose(window)) {
 
 		float currentFrame = static_cast<float>(glfwGetTime());
@@ -144,6 +148,8 @@ int main() {
 		lastFrame = currentFrame;
 
 		processInput(window);
+
+		glm::vec3 background(0.1f, 0.1f, 0.1f);
 
 		// Rendering
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -207,43 +213,43 @@ int main() {
 				break;
 			case 5:
 				loadSuccess = subject.loadOBJ("./cow.obj");
-				shader->use();
-				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
-				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
-				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-				shader->setFloat("material.shininess", 32.0f);
+				shader1.use();
+				shader1.setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader1.setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader1.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader1.setFloat("material.shininess", 32.0f);
 				modelScale = glm::vec3(0.3f);
 				canSwitchModel = true;
 				break;
 			case 6:
 				// Dragon and beetle seem to be most affected by the strange rippling due to the normal averaging.
 				loadSuccess = subject.loadOBJ("./beetle.obj");
-				shader->use();
-				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
-				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
-				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-				shader->setFloat("material.shininess", 32.0f);
+				shader1.use();
+				shader1.setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader1.setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader1.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader1.setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(2.0f);
 				break;
 			case 7:
 				loadSuccess = subject.loadOBJ("./xyzrgb_dragon.obj");
-				shader->use();
-				shader->setVec3("material.ambient", glm::vec3(0.135f, 0.2225f, 0.1575f));
-				shader->setVec3("material.diffuse", glm::vec3(0.54f, 0.89f, 0.63f));
-				shader->setVec3("material.ambient", glm::vec3(0.316228f, 0.316228f, 0.316228f));
-				shader->setFloat("material.shininess", 12.8f);
+				shader1.use();
+				shader1.setVec3("material.ambient", glm::vec3(0.135f, 0.2225f, 0.1575f));
+				shader1.setVec3("material.diffuse", glm::vec3(0.54f, 0.89f, 0.63f));
+				shader1.setVec3("material.ambient", glm::vec3(0.316228f, 0.316228f, 0.316228f));
+				shader1.setFloat("material.shininess", 12.8f);
 				modelScale = glm::vec3(0.01f);
 				canSwitchModel = true;
 				break;
 			default:
 				// Shoutout to Valve :)
 				loadSuccess = subject.loadOBJ("./error.obj");
-				shader->use();
-				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.0f, 0.0f));
-				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.0f, 0.0f));
-				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-				shader->setFloat("material.shininess", 32.0f);
+				shader1.use();
+				shader1.setVec3("material.ambient", glm::vec3(1.0f, 0.0f, 0.0f));
+				shader1.setVec3("material.diffuse", glm::vec3(1.0f, 0.0f, 0.0f));
+				shader1.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader1.setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(1.0f);
 				break;
@@ -281,7 +287,7 @@ int main() {
 
 		shader->setVec3("light.position", lightPosition);
 		shader->setVec3("light.diffuse", glm::vec3(0.7f));
-		shader->setVec3("light.ambient", glm::vec3(0.2f));
+		shader->setVec3("light.ambient", 0.5f * background);
 		shader->setVec3("light.specular", glm::vec3(1.0f));
 		shader->setVec3("viewPos", camera.Position);
 
@@ -354,6 +360,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 			currentShader++;
 			canSwitchShader = false;
 		}
+	}
+
+	if (key == GLFW_KEY_LEFT_ALT && action == GLFW_PRESS) {
+		toggleWireframe ? glPolygonMode(GL_FRONT_AND_BACK, GL_LINE) : glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		toggleWireframe = !toggleWireframe;
 	}
 }
 
