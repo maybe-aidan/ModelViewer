@@ -15,11 +15,16 @@
 const unsigned int WIDTH = 1280;
 const unsigned int HEIGHT = 720;
 
+// Input processing and callback functions
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void processInput(GLFWwindow* window);
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+// Raymarching Renderer
+void render_raymarching(GLFWwindow* window);
 
 Camera camera(glm::vec3(0.0f, 0.0f, 5.0f));
 float lastX = WIDTH / 2.0f;
@@ -77,6 +82,10 @@ int main() {
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
 
+	// Additive Blending
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+
 	// End of setup
 
 	Shader shader1("./vertex_shader.glsl", "./fragment_shader.glsl");
@@ -85,9 +94,30 @@ int main() {
 
 	Model subject;
 	subject.loadOBJ("./monkey.obj");
+	Model subject2;
+	subject2.loadOBJ("./stanford-bunny.obj");
 
 	Model light;
-	light.loadOBJ("./monkey.obj");
+	light.loadOBJ("./sphere.obj");
+
+	glm::vec3 modelPositions[] = {
+		glm::vec3(0.0f,  0.0f,  0.0f),
+		glm::vec3(2.0f,  5.0f, -15.0f),
+		glm::vec3(-1.5f, -2.2f, -2.5f),
+		glm::vec3(-3.8f, -2.0f, -12.3f),
+		glm::vec3(2.4f, -0.4f, -3.5f),
+		glm::vec3(-1.7f,  3.0f, -7.5f),
+		glm::vec3(1.3f, -2.0f, -2.5f),
+		glm::vec3(1.5f,  2.0f, -2.5f),
+		glm::vec3(1.5f,  0.2f, -1.5f),
+		glm::vec3(-1.3f,  1.0f, -1.5f)
+	};
+	glm::vec3 pointLightPositions[] = {
+		glm::vec3(0.7f,  0.2f,  2.0f),
+		glm::vec3(2.3f, -3.3f, -4.0f),
+		glm::vec3(-4.0f,  2.0f, -12.0f),
+		glm::vec3(0.0f,  0.0f, -3.0f)
+	};
 
 	
 	/* Textures are unused right now.
@@ -135,6 +165,13 @@ int main() {
 
 	glm::vec3 modelScale(1, 1, 1);
 
+	glm::vec3 lightColors[] = {
+		glm::vec3(0.7, 0.1, 0.1),
+		glm::vec3(0.1, 0.7, 0.1),
+		glm::vec3(0.6, 0.1, 0.4),
+		glm::vec3(0.1, 0.1, 0.7)
+	};
+
 	// Model Viewer Main Loop
 	// Move with						 [ W A S D]
 	// Look with						 [ MOUSE ]
@@ -155,7 +192,7 @@ int main() {
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Model Swapping
+		// Model Swapping Logic
 		if (!canSwitchModel) {
 			switch (currentModel % 9) {
 			case 0:
@@ -213,43 +250,43 @@ int main() {
 				break;
 			case 5:
 				loadSuccess = subject.loadOBJ("./cow.obj");
-				shader1.use();
-				shader1.setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
-				shader1.setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
-				shader1.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-				shader1.setFloat("material.shininess", 32.0f);
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
+				shader->use();
 				modelScale = glm::vec3(0.3f);
 				canSwitchModel = true;
 				break;
 			case 6:
 				// Dragon and beetle seem to be most affected by the strange rippling due to the normal averaging.
 				loadSuccess = subject.loadOBJ("./beetle.obj");
-				shader1.use();
-				shader1.setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
-				shader1.setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
-				shader1.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-				shader1.setFloat("material.shininess", 32.0f);
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.5f, 0.31f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(2.0f);
 				break;
 			case 7:
 				loadSuccess = subject.loadOBJ("./xyzrgb_dragon.obj");
-				shader1.use();
-				shader1.setVec3("material.ambient", glm::vec3(0.135f, 0.2225f, 0.1575f));
-				shader1.setVec3("material.diffuse", glm::vec3(0.54f, 0.89f, 0.63f));
-				shader1.setVec3("material.ambient", glm::vec3(0.316228f, 0.316228f, 0.316228f));
-				shader1.setFloat("material.shininess", 12.8f);
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(0.135f, 0.2225f, 0.1575f));
+				shader->setVec3("material.diffuse", glm::vec3(0.54f, 0.89f, 0.63f));
+				shader->setVec3("material.ambient", glm::vec3(0.316228f, 0.316228f, 0.316228f));
+				shader->setFloat("material.shininess", 12.8f);
 				modelScale = glm::vec3(0.01f);
 				canSwitchModel = true;
 				break;
 			default:
 				// Shoutout to Valve :)
 				loadSuccess = subject.loadOBJ("./error.obj");
-				shader1.use();
-				shader1.setVec3("material.ambient", glm::vec3(1.0f, 0.0f, 0.0f));
-				shader1.setVec3("material.diffuse", glm::vec3(1.0f, 0.0f, 0.0f));
-				shader1.setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
-				shader1.setFloat("material.shininess", 32.0f);
+				shader->use();
+				shader->setVec3("material.ambient", glm::vec3(1.0f, 0.0f, 0.0f));
+				shader->setVec3("material.diffuse", glm::vec3(1.0f, 0.0f, 0.0f));
+				shader->setVec3("material.specular", glm::vec3(0.5f, 0.5f, 0.5f));
+				shader->setFloat("material.shininess", 32.0f);
 				canSwitchModel = true;
 				modelScale = glm::vec3(1.0f);
 				break;
@@ -285,11 +322,39 @@ int main() {
 
 		shader->use();
 
-		shader->setVec3("light.position", lightPosition);
-		shader->setVec3("light.diffuse", glm::vec3(0.7f));
-		shader->setVec3("light.ambient", 0.5f * background);
-		shader->setVec3("light.specular", glm::vec3(1.0f));
-		shader->setVec3("viewPos", camera.Position);
+		// Directional Lights
+		shader->setVec3("dirLight.direction", glm::vec3(- 0.2f, -1.0f, -0.3f));
+		shader->setVec3("dirLight.ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+		shader->setVec3("dirLight.diffuse", glm::vec3(0.4f, 0.4f, 0.4f));
+		shader->setVec3("dirLight.specular",glm::vec3(0.5f, 0.5f, 0.5f));
+
+		
+		// Point lights
+		for (int i = 0; i < 4; i++) {
+			std::string pLight = std::string("pointLights[") + std::to_string(i) + std::string("]");
+			shader->setVec3(pLight+".position", pointLightPositions[i]);
+			shader->setVec3(pLight+".ambient", glm::vec3(0.05f, 0.05f, 0.05f));
+			shader->setVec3(pLight+".diffuse", lightColors[i]);
+			shader->setVec3(pLight+".specular",glm::vec3( 1.0f, 1.0f, 1.0f));
+			shader->setFloat(pLight+".constant", 1.0f);
+			shader->setFloat(pLight+".linear", 0.09f);
+			shader->setFloat(pLight+".quadratic", 0.032f);
+		}
+		
+
+		
+		// Spotlight
+		shader->setVec3("spotLight.position", camera.Position);
+		shader->setVec3("spotLight.direction", camera.Front);
+		shader->setVec3("spotLight.ambient", glm::vec3(0.0f, 0.0f, 0.0f));
+		shader->setVec3("spotLight.diffuse", glm::vec3(1.0f, 1.0f, 1.0f));
+		shader->setVec3("spotLight.specular",glm::vec3( 1.0f, 1.0f, 1.0f));
+		shader->setFloat("spotLight.constant", 1.0f);
+		shader->setFloat("spotLight.linear", 0.09f);
+		shader->setFloat("spotLight.quadratic", 0.032f);
+		shader->setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
+		shader->setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
+		
 
 		// pass projection matrix to shader (note that in this case it could change every frame)
 		glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)WIDTH / (float)HEIGHT, 0.1f, 100.0f);
@@ -300,21 +365,34 @@ int main() {
 		glm::mat4 view = camera.GetViewMatrix();
 		shader->setMat4("view", view);
 
-		glm::mat4 model = glm::scale(glm::mat4(1.0f), modelScale);
-		model = glm::rotate(model, currentFrame, glm::vec3(0.f, 1.f, 0.f));
-		shader->setMat4("model", model);
-		subject.render(*shader);
+		
+		for (unsigned int i = 0; i < 10; i++)
+		{
+			// calculate the model matrix for each object and pass it to shader before drawing
+			glm::mat4 model = glm::scale(glm::mat4(1.0f), modelScale);
+			model = glm::translate(model, modelPositions[i] / modelScale.x);
+			float angle = 20.0f * i;
+			model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+			model = glm::rotate(model, currentFrame, glm::vec3(0.f, 1.f, 0.f));
+			shader->setMat4("model", model);
+			subject.render(*shader);
 
+		}
+
+
+		// Light rendering
 		lightSource.use();
 		lightSource.setMat4("projection", projection);
 		lightSource.setMat4("view", view);
-		model = glm::mat4(1.0f);
-		model = glm::translate(model, lightPosition);
-		model = glm::scale(model, glm::vec3(0.2f));
-		lightSource.setMat4("model", model);
-
-		lightSource.setVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
-		light.render(lightSource);
+		for (unsigned int i = 0; i < 4; i++)
+		{
+			glm::mat4 model = glm::mat4(1.0f);
+			model = glm::translate(model, pointLightPositions[i]);
+			model = glm::scale(model, glm::vec3(0.2f));
+			lightSource.setMat4("model", model);
+			lightSource.setVec3("lightColor", lightColors[i]);
+			light.render(lightSource);
+		}
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -406,4 +484,10 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
 	camera.ProcessMouseScroll(static_cast<float>(yoffset));
+}
+
+
+// Raymarching
+void render_raymarching(GLFWwindow* window) {
+
 }
